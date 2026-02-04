@@ -37,18 +37,16 @@ import aiohttp
 import aiofiles
 
 # ==================== КОНФИГУРАЦИЯ ====================
-
 BOT_TOKEN = "7970525514:AAGVnTnsbRYaWL06lEnCMPmlaJJmnDwncpU"
 ADMIN_IDS = [8112974330]
 
 # VK Token - получите на https://vkhost.github.io/
 # Выберите приложение VK Admin или Kate Mobile, авторизуйтесь и скопируйте токен
-VK_TOKEN = "https://id.vk.com/auth?return_auth_hash=364bf8b55740b65ccd&redirect_uri=https%3A%2F%2Foauth.vk.com%2Fblank.html&redirect_uri_hash=beb050bf75f509dbeb&force_hash=1&app_id=6121396&response_type=token&code_challenge=&code_challenge_method=&scope=408923359&state="  # ← ВСТАВЬТЕ ВАШ VK ТОКЕН СЮДА
+VK_TOKEN = ""  # ← ВСТАВЬТЕ ВАШ VK ТОКЕН СЮДА
 
 DATABASE_URL = "sqlite+aiosqlite:///music_bot.db"
 
 # ==================== ЛОГИРОВАНИЕ ====================
-
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -56,7 +54,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ==================== БАЗА ДАННЫХ ====================
-
 Base = declarative_base()
 
 
@@ -117,7 +114,7 @@ class VKProfile(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(BigInteger, nullable=False)
-    vk_user_id = Column(BigInteger)  # ID пользователя VK
+    vk_user_id = Column(BigInteger)
     vk_url = Column(String(500), nullable=False)
     vk_name = Column(String(255))
 
@@ -163,7 +160,6 @@ async def init_db():
 
 
 # ==================== VK MUSIC SERVICE ====================
-
 class VKMusicService:
     """Сервис для работы с VK музыкой через vkpymusic"""
 
@@ -176,7 +172,6 @@ class VKMusicService:
         """Инициализация сервиса"""
         if self.token:
             try:
-                # User agent от VK Admin
                 user_agent = "VKAndroidApp/5.52-4543 (Android 5.1.1; SDK 22; x86_64; unknown Android SDK built for x86_64; en; 320x240)"
                 self.service = VKService(user_agent, self.token)
                 logger.info("VK Music Service initialized successfully")
@@ -271,9 +266,6 @@ class VKMusicService:
     @staticmethod
     def parse_vk_url(url: str) -> Optional[Dict]:
         """Парсит VK URL и извлекает информацию"""
-        # Профиль: https://vk.com/id123456789 или https://vk.com/username
-        # Плейлист: https://vk.com/music/playlist/-123456_789 или https://vk.com/music/album/-123456_789
-
         patterns = {
             "profile_id": r"vk\.com/id(\d+)",
             "profile_username": r"vk\.com/([a-zA-Z][a-zA-Z0-9_.]+)(?:\?|$|/)",
@@ -287,7 +279,6 @@ class VKMusicService:
                     return {"type": "profile", "user_id": int(match.group(1))}
                 elif pattern_name == "profile_username":
                     username = match.group(1)
-                    # Исключаем служебные страницы
                     if username not in ["music", "audio", "feed", "friends", "groups", "im"]:
                         return {"type": "username", "username": username}
                 elif pattern_name == "playlist":
@@ -317,7 +308,7 @@ class VKMusicService:
                         if obj_type == "user":
                             return obj_id
                         elif obj_type == "group":
-                            return -obj_id  # Группы имеют отрицательный ID
+                            return -obj_id
         except Exception as e:
             logger.error(f"Resolve username error: {e}")
         return None
@@ -328,7 +319,6 @@ vk_service = VKMusicService(VK_TOKEN) if VK_TOKEN else None
 
 
 # ==================== SHAZAM SERVICE ====================
-
 class ShazamService:
     """Сервис распознавания музыки"""
 
@@ -357,7 +347,6 @@ shazam_service = ShazamService()
 
 
 # ==================== КЛАВИАТУРЫ ====================
-
 def get_subscribe_kb(channels: list) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for channel in channels:
@@ -615,7 +604,6 @@ def build_buttons_from_json(buttons: list) -> Optional[InlineKeyboardMarkup]:
 
 
 # ==================== MIDDLEWARE ====================
-
 class SubscriptionMiddleware(BaseMiddleware):
     async def __call__(
             self,
@@ -697,7 +685,6 @@ class ActivityMiddleware(BaseMiddleware):
 
 
 # ==================== ПЛАНИРОВЩИК ====================
-
 class BroadcastScheduler:
     def __init__(self, bot: Bot):
         self.bot = bot
@@ -792,7 +779,6 @@ class BroadcastScheduler:
 
 
 # ==================== FSM STATES ====================
-
 class PlaylistStates(StatesGroup):
     waiting_name = State()
     waiting_new_name = State()
@@ -817,7 +803,6 @@ class AdminStates(StatesGroup):
 
 
 # ==================== ХЕЛПЕРЫ ====================
-
 # Кэш для результатов поиска
 search_cache: Dict[int, List[Dict]] = {}
 
@@ -861,7 +846,6 @@ async def log_search(user_id: int, query: str, search_type: str):
 
 
 # ==================== РОУТЕРЫ ====================
-
 user_router = Router()
 admin_router = Router()
 music_router = Router()
@@ -871,7 +855,6 @@ vk_router = Router()
 
 
 # ==================== USER HANDLERS ====================
-
 @user_router.message(CommandStart())
 async def cmd_start(message: Message):
     user = message.from_user
@@ -978,16 +961,16 @@ async def cmd_settings(message: Message):
         )
         user = result.scalar_one_or_none()
 
-    if not user:
-        await message.answer("Пользователь не найден. Нажмите /start")
-        return
+        if not user:
+            await message.answer("Пользователь не найден. Нажмите /start")
+            return
 
-    text = (
-        "⚙️ <b>Настройки</b>\n\n"
-        "Здесь вы можете включить или отключить функции бота:"
-    )
+        text = (
+            "⚙️ <b>Настройки</b>\n\n"
+            "Здесь вы можете включить или отключить функции бота:"
+        )
 
-    await message.answer(text, reply_markup=get_settings_kb(user), parse_mode="HTML")
+        await message.answer(text, reply_markup=get_settings_kb(user), parse_mode="HTML")
 
 
 @user_router.callback_query(F.data == "toggle_recognize")
@@ -1063,7 +1046,6 @@ async def cmd_help(message: Message):
 
 
 # ==================== MUSIC HANDLERS ====================
-
 @music_router.message(F.text == "🎵 Поиск музыки")
 async def search_prompt(message: Message):
     await message.answer(
@@ -1134,7 +1116,8 @@ async def search_music(message: Message):
 
         search_cache[message.from_user.id] = tracks
 
-        source_text = "VK" if vk_service and vk_service.is_available() and tracks[0].get("source") != "deezer" else "Deezer (30 сек превью)"
+        source_text = "VK" if vk_service and vk_service.is_available() and tracks[0].get(
+            "source") != "deezer" else "Deezer (30 сек превью)"
 
         await searching_msg.edit_text(
             f"🎵 <b>Результаты поиска:</b> {query}\n"
@@ -1219,7 +1202,6 @@ async def download_track(callback: CallbackQuery):
 
 
 # ==================== RECOGNIZE HANDLERS ====================
-
 async def check_recognize_enabled(user_id: int) -> bool:
     async with async_session() as session:
         result = await session.execute(
@@ -1435,7 +1417,6 @@ async def search_from_recognition(callback: CallbackQuery):
 
 
 # ==================== PLAYLIST HANDLERS ====================
-
 @playlist_router.message(Command("playlists"))
 @playlist_router.message(F.text == "📋 Мои плейлисты")
 async def cmd_playlists(message: Message):
@@ -1763,7 +1744,6 @@ async def save_to_playlist(callback: CallbackQuery):
 
 
 # ==================== VK HANDLERS ====================
-
 @vk_router.message(Command("profiles"))
 async def cmd_profiles(message: Message):
     if not vk_service or not vk_service.is_available():
@@ -2080,7 +2060,6 @@ async def delete_vk_profile(callback: CallbackQuery):
 
 
 # ==================== ADMIN HANDLERS ====================
-
 @admin_router.message(Command("admin"))
 async def cmd_admin(message: Message):
     if not is_admin(message.from_user.id):
@@ -2107,7 +2086,6 @@ async def admin_menu(callback: CallbackQuery):
 
 
 # ===== СТАТИСТИКА =====
-
 @admin_router.callback_query(F.data == "admin_stats")
 async def admin_stats(callback: CallbackQuery):
     if not is_admin(callback.from_user.id):
@@ -2219,7 +2197,6 @@ async def show_stats(callback: CallbackQuery):
 
 
 # ===== КАНАЛЫ =====
-
 @admin_router.callback_query(F.data == "admin_channels")
 async def admin_channels(callback: CallbackQuery):
     if not is_admin(callback.from_user.id):
@@ -2383,7 +2360,6 @@ async def delete_channel(callback: CallbackQuery):
 
 
 # ===== РАССЫЛКИ =====
-
 @admin_router.callback_query(F.data == "admin_broadcast")
 async def admin_broadcast(callback: CallbackQuery):
     if not is_admin(callback.from_user.id):
@@ -2580,7 +2556,6 @@ async def execute_broadcast_now(message: Message, state: FSMContext):
 
 
 # ===== ОТЛОЖЕННЫЕ =====
-
 @admin_router.callback_query(F.data == "admin_scheduled")
 async def admin_scheduled(callback: CallbackQuery):
     if not is_admin(callback.from_user.id):
@@ -2858,7 +2833,6 @@ async def delete_broadcast(callback: CallbackQuery):
 
 
 # ===== ПРИВЕТСТВИЕ =====
-
 @admin_router.callback_query(F.data == "admin_welcome")
 async def admin_welcome(callback: CallbackQuery, state: FSMContext):
     if not is_admin(callback.from_user.id):
@@ -2926,7 +2900,6 @@ async def welcome_photo_handler(message: Message, state: FSMContext):
 
 
 # ==================== ИНИЦИАЛИЗАЦИЯ БОТА ====================
-
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 broadcast_scheduler = BroadcastScheduler(bot)
