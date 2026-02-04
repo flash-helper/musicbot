@@ -42,7 +42,7 @@ ADMIN_IDS = [8112974330]
 
 # VK Token - получите на https://vkhost.github.io/
 # Выберите приложение VK Admin или Kate Mobile, авторизуйтесь и скопируйте токен
-VK_TOKEN = ""  # ← ВСТАВЬТЕ ВАШ VK ТОКЕН СЮДА
+VK_TOKEN = "https://oauth.vk.com/blank.html#access_token=vk1.a.reT2RfYzD-6lzA6V3YNzUgPKTI4pesXe8oXYCFGYRRMeQMn5r934MmRqwCQDhHh4tM3GUsbIopUJOzqERF-SSopnZM_0RJSOKM23BrsisQPSEMI-J_mwZTqh6iq81ZkKN6n3FIy7PZG-zaFylFOwBwoyEIqKo1bymc8X2L1XWQFaQ40oMDIGhWAp0NqEDccbS01s572ApifcBe6DgAmHqg&expires_in=0&user_id=891859955"  # ← ВСТАВЬТЕ ВАШ VK ТОКЕН СЮДА
 
 DATABASE_URL = "sqlite+aiosqlite:///music_bot.db"
 
